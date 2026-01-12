@@ -1,0 +1,178 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "description": "BehaviorNet place type definitions",
+  "version": "1.0.0",
+
+  "commonParams": {
+    "id": {
+      "type": "string",
+      "required": true,
+      "description": "Unique identifier for the place"
+    },
+    "label": {
+      "type": "string",
+      "required": false,
+      "description": "Display label (defaults to id)"
+    },
+    "tokenCapacity": {
+      "type": "integer",
+      "required": false,
+      "min": 1,
+      "description": "Maximum number of tokens this place can hold (unlimited if not set)"
+    },
+    "requiredActors": {
+      "type": "array",
+      "items": { "type": "string" },
+      "required": false,
+      "description": "Actor types that tokens must contain to enter this place"
+    }
+  },
+
+  "placeTypes": {
+    "entrypoint": {
+      "label": "Entrypoint",
+      "description": "Entry point for new tokens into the net",
+      "color": "green",
+      "icon": ">",
+      "params": {
+        "entryMechanism": {
+          "type": "enum",
+          "options": ["http", "manual", "ros"],
+          "default": "http",
+          "required": true,
+          "description": "How tokens are injected"
+        },
+        "newActors": {
+          "type": "array",
+          "items": { "type": "actorRef" },
+          "default": [],
+          "required": false,
+          "description": "Actor types that can be created at this entrypoint"
+        }
+      }
+    },
+
+    "resource_pool": {
+      "label": "Resource Pool",
+      "description": "Pool of available resources (e.g., chargers, stations)",
+      "color": "blue",
+      "icon": "#",
+      "params": {
+        "resourceId": {
+          "type": "actorRef",
+          "required": true,
+          "description": "Actor type for resources in this pool"
+        }
+      }
+    },
+
+    "action": {
+      "label": "Action",
+      "description": "Executes an action on the token, has subplaces for outcomes",
+      "color": "orange",
+      "icon": "A",
+      "hasSubplaces": true,
+      "subplaces": ["success", "failure", "error"],
+      "params": {
+        "actionId": {
+          "type": "actionRef",
+          "required": true,
+          "description": "Action to execute"
+        },
+        "retries": {
+          "type": "integer",
+          "min": 0,
+          "default": 0,
+          "required": false,
+          "description": "Number of retry attempts on failure"
+        },
+        "timeoutPerTryS": {
+          "type": "integer",
+          "min": 1,
+          "required": false,
+          "description": "Timeout per attempt in seconds"
+        },
+        "timeoutPerTryMin": {
+          "type": "integer",
+          "min": 1,
+          "required": false,
+          "description": "Timeout per attempt in minutes (alternative to seconds)"
+        },
+        "timeoutAsError": {
+          "type": "boolean",
+          "default": false,
+          "required": false,
+          "description": "Treat timeout as error (true) or failure (false)"
+        },
+        "failureAsError": {
+          "type": "boolean",
+          "default": false,
+          "required": false,
+          "description": "Treat retry-exhausted failure as error"
+        },
+        "errorToGlobalHandler": {
+          "type": "boolean",
+          "default": true,
+          "required": false,
+          "description": "Route errors to global error handler"
+        }
+      }
+    },
+
+    "wait_with_timeout": {
+      "label": "Wait with Timeout",
+      "description": "Waits for a condition with timeout, moves to error on timeout",
+      "color": "yellow",
+      "icon": "W",
+      "params": {
+        "timeoutMin": {
+          "type": "integer",
+          "min": 1,
+          "default": 5,
+          "required": true,
+          "description": "Timeout in minutes"
+        },
+        "onTimeout": {
+          "type": "string",
+          "default": "error::timeout",
+          "required": true,
+          "description": "Error type to emit on timeout"
+        }
+      }
+    },
+
+    "exit_logger": {
+      "label": "Exit Logger",
+      "description": "Logs token information and destroys it (end of workflow)",
+      "color": "red",
+      "icon": "X",
+      "params": {}
+    },
+
+    "plain": {
+      "label": "Plain",
+      "description": "Simple place for flow control, no special behavior",
+      "color": "gray",
+      "icon": "P",
+      "params": {}
+    }
+  },
+
+  "transitionParams": {
+    "priority": {
+      "type": "integer",
+      "min": 1,
+      "default": 1,
+      "required": false,
+      "description": "Higher priority transitions fire first"
+    }
+  },
+
+  "arcParams": {
+    "tokenFilter": {
+      "type": "actorRef",
+      "required": false,
+      "description": "Filter tokens by actor type for this arc (used for token splitting)"
+    }
+  }
+}
