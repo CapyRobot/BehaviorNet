@@ -3,7 +3,10 @@
 
 #pragma once
 
+#include "Actor.hpp"
 #include "Error.hpp"
+
+#include <nlohmann/json.hpp>
 
 #include <memory>
 #include <typeindex>
@@ -11,16 +14,15 @@
 
 namespace bnet {
 
-class ActorBase;
-
 /// @brief A collection of actors flowing through the net.
 ///
 /// Tokens move between places as transitions fire. Each token contains
-/// zero or more actors (domain entities like Vehicle, Robot, Charger).
+/// zero or more actors (domain entities like Vehicle, Robot, Charger)
+/// and arbitrary JSON data that can be used to pass parameters.
 class Token
 {
 public:
-    Token() = default;
+    Token() : data_(nlohmann::json::object()) {}
     ~Token() = default;
 
     Token(Token&&) = default;
@@ -65,8 +67,38 @@ public:
         return actor;
     }
 
+    /// @brief Get token data (for reading/writing key-value pairs).
+    [[nodiscard]] nlohmann::json& data() { return data_; }
+    [[nodiscard]] const nlohmann::json& data() const { return data_; }
+
+    /// @brief Set a data value.
+    void setData(const std::string& key, nlohmann::json value)
+    {
+        data_[key] = std::move(value);
+    }
+
+    /// @brief Get a data value.
+    [[nodiscard]] const nlohmann::json& getData(const std::string& key) const
+    {
+        return data_.at(key);
+    }
+
+    /// @brief Get a data value with default.
+    [[nodiscard]] nlohmann::json getDataOr(const std::string& key, nlohmann::json defaultValue) const
+    {
+        auto it = data_.find(key);
+        return it != data_.end() ? *it : std::move(defaultValue);
+    }
+
+    /// @brief Check if data key exists.
+    [[nodiscard]] bool hasData(const std::string& key) const
+    {
+        return data_.contains(key);
+    }
+
 private:
     std::unordered_map<std::type_index, std::unique_ptr<ActorBase>> actors_;
+    nlohmann::json data_;
 };
 
 } // namespace bnet

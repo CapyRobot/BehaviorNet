@@ -4,6 +4,7 @@
 #pragma once
 
 #include <exception>
+#include <stdexcept>
 #include <string>
 #include <string_view>
 #include <utility>
@@ -27,6 +28,8 @@ public:
         Error
     };
 
+    ActionResult() : status_(Status::Success) {}
+
     [[nodiscard]] static ActionResult success()
     {
         return ActionResult(Status::Success);
@@ -35,6 +38,13 @@ public:
     [[nodiscard]] static ActionResult failure()
     {
         return ActionResult(Status::Failure);
+    }
+
+    [[nodiscard]] static ActionResult failure(std::string_view message)
+    {
+        ActionResult result(Status::Failure);
+        result.failureMessage_ = std::string(message);
+        return result;
     }
 
     [[nodiscard]] static ActionResult inProgress()
@@ -48,6 +58,14 @@ public:
     {
         ActionResult result(Status::Error);
         result.error_ = std::make_exception_ptr(E(std::forward<Args>(args)...));
+        return result;
+    }
+
+    /// @brief Create an error result from a string message (uses std::runtime_error).
+    [[nodiscard]] static ActionResult errorMessage(std::string_view message)
+    {
+        ActionResult result(Status::Error);
+        result.error_ = std::make_exception_ptr(std::runtime_error(std::string(message)));
         return result;
     }
 
@@ -127,11 +145,14 @@ public:
 
     [[nodiscard]] std::string errorTypeName() const;
 
+    [[nodiscard]] const std::string& failureMessage() const { return failureMessage_; }
+
 private:
     explicit ActionResult(Status status) : status_(status) {}
 
     Status status_;
     std::exception_ptr error_;
+    std::string failureMessage_;
 };
 
 } // namespace bnet

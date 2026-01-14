@@ -18,7 +18,28 @@ cc_library(
         "include/bnet/Token.hpp",
     ],
     includes = ["include"],
-    deps = [],
+    deps = ["@nlohmann_json//:json"],
+)
+
+# Core Petri Net engine
+cc_library(
+    name = "bnet_core",
+    srcs = [
+        "src/core/Arc.cpp",
+        "src/core/Net.cpp",
+        "src/core/Place.cpp",
+        "src/core/TokenQueue.cpp",
+        "src/core/Transition.cpp",
+    ],
+    hdrs = [
+        "include/bnet/core/Arc.hpp",
+        "include/bnet/core/Net.hpp",
+        "include/bnet/core/Place.hpp",
+        "include/bnet/core/TokenQueue.hpp",
+        "include/bnet/core/Transition.hpp",
+    ],
+    includes = ["include"],
+    deps = [":bnet"],
 )
 
 # Example actors for testing
@@ -38,5 +59,214 @@ cc_test(
     deps = [
         ":bnet",
         ":warehouse_actors",
+    ],
+)
+
+# Core Petri Net tests
+cc_test(
+    name = "core_test",
+    srcs = ["test/core/core_test.cpp"],
+    deps = [
+        ":bnet",
+        ":bnet_core",
+    ],
+)
+
+# Action execution system
+cc_library(
+    name = "bnet_execution",
+    srcs = [
+        "src/execution/ActionContext.cpp",
+        "src/execution/ActionExecutor.cpp",
+    ],
+    hdrs = [
+        "include/bnet/execution/ActionContext.hpp",
+        "include/bnet/execution/ActionExecutor.hpp",
+        "include/bnet/execution/RetryPolicy.hpp",
+    ],
+    includes = ["include"],
+    deps = [":bnet"],
+)
+
+# Execution tests
+cc_test(
+    name = "execution_test",
+    srcs = ["test/execution/execution_test.cpp"],
+    deps = [
+        ":bnet",
+        ":bnet_execution",
+    ],
+)
+
+# Place types library
+cc_library(
+    name = "bnet_places",
+    srcs = [
+        "src/places/ActionPlace.cpp",
+        "src/places/EntrypointPlace.cpp",
+        "src/places/ExitLoggerPlace.cpp",
+        "src/places/ResourcePoolPlace.cpp",
+        "src/places/WaitWithTimeoutPlace.cpp",
+    ],
+    hdrs = [
+        "include/bnet/places/ActionPlace.hpp",
+        "include/bnet/places/EntrypointPlace.hpp",
+        "include/bnet/places/ExitLoggerPlace.hpp",
+        "include/bnet/places/PlaceType.hpp",
+        "include/bnet/places/PlainPlace.hpp",
+        "include/bnet/places/ResourcePoolPlace.hpp",
+        "include/bnet/places/WaitWithTimeoutPlace.hpp",
+    ],
+    includes = ["include"],
+    deps = [
+        ":bnet",
+        ":bnet_core",
+        ":bnet_execution",
+    ],
+)
+
+# Place types tests
+cc_test(
+    name = "places_test",
+    srcs = ["test/places/places_test.cpp"],
+    deps = [
+        ":bnet",
+        ":bnet_core",
+        ":bnet_execution",
+        ":bnet_places",
+    ],
+)
+
+# Service abstraction layer
+cc_library(
+    name = "bnet_service",
+    srcs = ["src/service/HttpService.cpp"],
+    hdrs = ["include/bnet/service/HttpService.hpp"],
+    includes = ["include"],
+    deps = [],
+)
+
+# Service tests
+cc_test(
+    name = "service_test",
+    srcs = ["test/service/service_test.cpp"],
+    deps = [":bnet_service"],
+)
+
+# Built-in actors
+cc_library(
+    name = "bnet_actors",
+    srcs = [
+        "src/actors/DataStoreActor.cpp",
+        "src/actors/HttpActor.cpp",
+    ],
+    hdrs = [
+        "include/bnet/actors/DataStoreActor.hpp",
+        "include/bnet/actors/HttpActor.hpp",
+    ],
+    includes = ["include"],
+    deps = [
+        ":bnet",
+        ":bnet_service",
+        "@nlohmann_json//:json",
+    ],
+)
+
+# Actors tests
+cc_test(
+    name = "actors_test",
+    srcs = ["test/actors/actors_test.cpp"],
+    deps = [
+        ":bnet",
+        ":bnet_actors",
+        ":bnet_service",
+    ],
+)
+
+# Built-in actions
+cc_library(
+    name = "bnet_actions",
+    srcs = [
+        "src/actions/ConditionAction.cpp",
+        "src/actions/DelayAction.cpp",
+    ],
+    hdrs = [
+        "include/bnet/actions/ConditionAction.hpp",
+        "include/bnet/actions/DelayAction.hpp",
+    ],
+    includes = ["include"],
+    deps = [":bnet"],
+)
+
+# Actions tests
+cc_test(
+    name = "actions_test",
+    srcs = ["test/actions/actions_test.cpp"],
+    deps = [
+        ":bnet",
+        ":bnet_actions",
+    ],
+)
+
+# Configuration parser
+cc_library(
+    name = "bnet_config",
+    srcs = ["src/config/ConfigParser.cpp"],
+    hdrs = [
+        "include/bnet/config/ConfigParser.hpp",
+        "include/bnet/config/ConfigTypes.hpp",
+    ],
+    includes = ["include"],
+    deps = ["@nlohmann_json//:json"],
+)
+
+# Config tests
+cc_test(
+    name = "config_test",
+    srcs = ["test/config/config_test.cpp"],
+    deps = [":bnet_config"],
+)
+
+# Runtime controller
+cc_library(
+    name = "bnet_runtime",
+    srcs = ["src/runtime/RuntimeController.cpp"],
+    hdrs = ["include/bnet/runtime/RuntimeController.hpp"],
+    includes = ["include"],
+    deps = [
+        ":bnet",
+        ":bnet_config",
+        ":bnet_core",
+        ":bnet_execution",
+        ":bnet_places",
+    ],
+)
+
+# Runtime tests
+cc_test(
+    name = "runtime_test",
+    srcs = ["test/runtime/runtime_test.cpp"],
+    deps = [
+        ":bnet",
+        ":bnet_runtime",
+    ],
+)
+
+# Testing utilities
+cc_library(
+    name = "bnet_testing",
+    srcs = ["src/testing/TestHttpServer.cpp"],
+    hdrs = ["include/bnet/testing/TestHttpServer.hpp"],
+    includes = ["include"],
+    deps = [":bnet_service"],
+)
+
+# Testing utilities tests
+cc_test(
+    name = "testing_test",
+    srcs = ["test/testing/testing_test.cpp"],
+    deps = [
+        ":bnet_service",
+        ":bnet_testing",
     ],
 )

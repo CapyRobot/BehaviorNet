@@ -1,0 +1,195 @@
+{
+  "actors": [
+    {
+      "id": "RobotActor",
+      "required_init_params": {
+        "robot_id": {"type": "str"}
+      },
+      "optional_init_params": {
+        "speed": {"type": "float", "default": 1.0}
+      }
+    },
+    {
+      "id": "ConveyorActor",
+      "required_init_params": {
+        "conveyor_id": {"type": "str"}
+      },
+      "optional_init_params": {}
+    }
+  ],
+  "actions": [
+    {
+      "id": "robot::move_to_position",
+      "required_actors": ["RobotActor"]
+    },
+    {
+      "id": "robot::pick_item",
+      "required_actors": ["RobotActor"]
+    },
+    {
+      "id": "robot::place_item",
+      "required_actors": ["RobotActor"]
+    },
+    {
+      "id": "conveyor::start",
+      "required_actors": ["ConveyorActor"]
+    },
+    {
+      "id": "conveyor::stop",
+      "required_actors": ["ConveyorActor"]
+    },
+    {
+      "id": "conveyor::wait_for_item",
+      "required_actors": ["ConveyorActor"]
+    }
+  ],
+  "places": [
+    {
+      "id": "entry",
+      "type": "entrypoint",
+      "params": {
+        "new_actors": []
+      }
+    },
+    {
+      "id": "start_conveyor",
+      "type": "action",
+      "params": {
+        "action_id": "conveyor::start",
+        "retries": 1,
+        "timeout_per_try_s": 5,
+        "failure_as_error": false,
+        "error_to_global_handler": true
+      }
+    },
+    {
+      "id": "wait_for_item",
+      "type": "action",
+      "params": {
+        "action_id": "conveyor::wait_for_item",
+        "retries": 0,
+        "timeout_per_try_s": 30,
+        "failure_as_error": false,
+        "error_to_global_handler": true
+      }
+    },
+    {
+      "id": "move_to_pickup",
+      "type": "action",
+      "params": {
+        "action_id": "robot::move_to_position",
+        "retries": 2,
+        "timeout_per_try_s": 10,
+        "failure_as_error": false,
+        "error_to_global_handler": true
+      }
+    },
+    {
+      "id": "pick_item",
+      "type": "action",
+      "params": {
+        "action_id": "robot::pick_item",
+        "retries": 3,
+        "timeout_per_try_s": 5,
+        "failure_as_error": false,
+        "error_to_global_handler": false
+      }
+    },
+    {
+      "id": "move_to_dropoff",
+      "type": "action",
+      "params": {
+        "action_id": "robot::move_to_position",
+        "retries": 2,
+        "timeout_per_try_s": 10,
+        "failure_as_error": false,
+        "error_to_global_handler": true
+      }
+    },
+    {
+      "id": "place_item",
+      "type": "action",
+      "params": {
+        "action_id": "robot::place_item",
+        "retries": 2,
+        "timeout_per_try_s": 5,
+        "failure_as_error": false,
+        "error_to_global_handler": true
+      }
+    },
+    {
+      "id": "stop_conveyor",
+      "type": "action",
+      "params": {
+        "action_id": "conveyor::stop",
+        "retries": 1,
+        "timeout_per_try_s": 5,
+        "failure_as_error": false,
+        "error_to_global_handler": true
+      }
+    },
+    {
+      "id": "log_success",
+      "type": "exit_logger",
+      "params": {}
+    },
+    {
+      "id": "handle_pick_failure",
+      "type": "action",
+      "params": {
+        "action_id": "conveyor::stop",
+        "retries": 0,
+        "timeout_per_try_s": 5,
+        "failure_as_error": false,
+        "error_to_global_handler": false
+      }
+    },
+    {
+      "id": "log_failure",
+      "type": "exit_logger",
+      "params": {}
+    }
+  ],
+  "transitions": [
+    {
+      "from": ["entry"],
+      "to": ["start_conveyor"]
+    },
+    {
+      "from": ["start_conveyor::success"],
+      "to": ["wait_for_item"]
+    },
+    {
+      "from": ["wait_for_item::success"],
+      "to": ["move_to_pickup"]
+    },
+    {
+      "from": ["move_to_pickup::success"],
+      "to": ["pick_item"]
+    },
+    {
+      "from": ["pick_item::success"],
+      "to": ["move_to_dropoff"]
+    },
+    {
+      "from": ["move_to_dropoff::success"],
+      "to": ["place_item"]
+    },
+    {
+      "from": ["place_item::success"],
+      "to": ["stop_conveyor"]
+    },
+    {
+      "from": ["stop_conveyor::success"],
+      "to": ["log_success"]
+    },
+    {
+      "from": ["pick_item::failure"],
+      "to": ["handle_pick_failure"]
+    },
+    {
+      "from": ["handle_pick_failure::success", "handle_pick_failure::failure"],
+      "to": ["log_failure"]
+    }
+  ]
+}

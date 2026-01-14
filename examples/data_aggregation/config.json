@@ -1,0 +1,108 @@
+{
+  "actors": [
+    {
+      "id": "builtin::Http",
+      "required_init_params": {},
+      "optional_init_params": {
+        "base_url": {"type": "str"}
+      }
+    },
+    {
+      "id": "builtin::DataStore",
+      "required_init_params": {},
+      "optional_init_params": {}
+    }
+  ],
+  "actions": [
+    {
+      "id": "builtin::http_get",
+      "required_actors": ["builtin::Http"]
+    },
+    {
+      "id": "builtin::datastore_set",
+      "required_actors": ["builtin::DataStore"]
+    },
+    {
+      "id": "builtin::datastore_get",
+      "required_actors": ["builtin::DataStore"]
+    }
+  ],
+  "places": [
+    {
+      "id": "entry",
+      "type": "entrypoint",
+      "params": {
+        "new_actors": []
+      }
+    },
+    {
+      "id": "fetch_weather_city1",
+      "type": "action",
+      "params": {
+        "action_id": "builtin::http_get",
+        "retries": 2,
+        "timeout_per_try_s": 10,
+        "failure_as_error": false,
+        "error_to_global_handler": true
+      }
+    },
+    {
+      "id": "fetch_weather_city2",
+      "type": "action",
+      "params": {
+        "action_id": "builtin::http_get",
+        "retries": 2,
+        "timeout_per_try_s": 10,
+        "failure_as_error": false,
+        "error_to_global_handler": true
+      }
+    },
+    {
+      "id": "store_results",
+      "type": "action",
+      "params": {
+        "action_id": "builtin::datastore_set",
+        "retries": 0,
+        "timeout_per_try_s": 5,
+        "failure_as_error": true,
+        "error_to_global_handler": true
+      }
+    },
+    {
+      "id": "log_completion",
+      "type": "exit_logger",
+      "params": {}
+    },
+    {
+      "id": "handle_fetch_error",
+      "type": "exit_logger",
+      "params": {}
+    }
+  ],
+  "transitions": [
+    {
+      "from": ["entry"],
+      "to": ["fetch_weather_city1"]
+    },
+    {
+      "from": ["fetch_weather_city1::success"],
+      "to": ["fetch_weather_city2"]
+    },
+    {
+      "from": ["fetch_weather_city2::success"],
+      "to": ["store_results"]
+    },
+    {
+      "from": ["store_results::success"],
+      "to": ["log_completion"]
+    },
+    {
+      "from": ["fetch_weather_city1::failure"],
+      "to": ["handle_fetch_error"]
+    },
+    {
+      "from": ["fetch_weather_city2::failure"],
+      "to": ["handle_fetch_error"]
+    }
+  ]
+}

@@ -1,0 +1,39 @@
+load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library", "cc_test")
+
+package(default_visibility = ["//visibility:public"])
+
+# User-defined actors library
+cc_library(
+    name = "robot_actors",
+    hdrs = ["robot_actors.hpp"],
+    deps = [
+        "//runtime:bnet",
+        "//runtime:bnet_runtime",
+    ],
+)
+
+# Robot Picking Example - User-defined actors
+cc_binary(
+    name = "robot_picking_example",
+    srcs = ["main.cpp"],
+    data = ["config.json"],
+    deps = [
+        ":robot_actors",
+        "//runtime:bnet",
+        "//runtime:bnet_config",
+        "//runtime:bnet_runtime",
+    ],
+)
+
+# Test that verifies the example compiles and runs
+cc_test(
+    name = "robot_picking_test",
+    srcs = ["test.cpp"],
+    data = ["config.json"],
+    deps = [
+        ":robot_actors",
+        "//runtime:bnet",
+        "//runtime:bnet_config",
+        "//runtime:bnet_runtime",
+    ],
+)

@@ -1,0 +1,31 @@
+load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_test")
+
+package(default_visibility = ["//visibility:public"])
+
+# Data Aggregation Example - Built-in actors only
+cc_binary(
+    name = "data_aggregation_example",
+    srcs = ["main.cpp"],
+    data = ["config.json"],
+    deps = [
+        "//runtime:bnet",
+        "//runtime:bnet_actors",
+        "//runtime:bnet_config",
+        "//runtime:bnet_runtime",
+        "//runtime:bnet_testing",
+    ],
+)
+
+# Test that verifies the example compiles and runs
+cc_test(
+    name = "data_aggregation_test",
+    srcs = ["test.cpp"],
+    data = ["config.json"],
+    deps = [
+        "//runtime:bnet",
+        "//runtime:bnet_actors",
+        "//runtime:bnet_config",
+        "//runtime:bnet_runtime",
+        "//runtime:bnet_testing",
+    ],
+)
