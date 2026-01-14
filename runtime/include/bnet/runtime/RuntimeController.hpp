@@ -27,6 +27,9 @@ using LogCallback = std::function<void(const std::string& message)>;
 /// @brief Callback for token events.
 using TokenEventCallback = std::function<void(const std::string& placeId, const Token& token)>;
 
+/// @brief Callback for transition events.
+using TransitionEventCallback = std::function<void(const std::string& transitionId, std::uint64_t epoch)>;
+
 /// @brief Current state of the runtime.
 enum class RuntimeState
 {
@@ -108,6 +111,16 @@ public:
     /// @brief Set callback for token exit events.
     void setOnTokenExit(TokenEventCallback callback) { onTokenExit_ = std::move(callback); }
 
+    /// @brief Set callback for transition fired events.
+    void setOnTransitionFired(TransitionEventCallback callback) { onTransitionFired_ = std::move(callback); }
+
+    /// @brief Get tokens at a specific place.
+    /// @return Vector of token info (id, data) pairs.
+    [[nodiscard]] std::vector<std::pair<core::TokenId, nlohmann::json>> getPlaceTokens(const std::string& placeId) const;
+
+    /// @brief Get the loaded net configuration.
+    [[nodiscard]] const config::NetConfig& getNetConfig() const { return loadedConfig_; }
+
     /// @brief Register an action invoker for a given action ID.
     void registerAction(const std::string& actionId, execution::ActionInvoker invoker);
 
@@ -140,6 +153,8 @@ private:
     LogCallback logCallback_;
     TokenEventCallback onTokenEnter_;
     TokenEventCallback onTokenExit_;
+    TransitionEventCallback onTransitionFired_;
+    config::NetConfig loadedConfig_;
 
     std::thread runThread_;
     std::mutex mutex_;

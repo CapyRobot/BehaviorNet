@@ -25,6 +25,7 @@ bool RuntimeController::loadConfig(const config::NetConfig& config)
 
     errors_.clear();
     placeTypes_.clear();
+    loadedConfig_ = config;
 
     return createNetFromConfig(config);
 }
@@ -151,6 +152,37 @@ RuntimeStats RuntimeController::stats() const
     return s;
 }
 
+std::vector<std::pair<core::TokenId, nlohmann::json>> RuntimeController::getPlaceTokens(const std::string& placeId) const
+{
+    std::vector<std::pair<core::TokenId, nlohmann::json>> result;
+
+    const auto* place = net_.getPlace(placeId);
+    if (!place)
+    {
+        return result;
+    }
+
+    // Get tokens from main queue - getAllTokens already returns (id, json) pairs
+    for (const auto& [id, data] : place->tokens().getAllTokens())
+    {
+        result.emplace_back(id, data);
+    }
+
+    // Get tokens from subplaces if enabled
+    if (place->hasSubplaces())
+    {
+        for (auto sub : {core::Subplace::InExecution, core::Subplace::Success, core::Subplace::Failure, core::Subplace::Error})
+        {
+            for (const auto& [id, data] : place->subplace(sub).getAllTokens())
+            {
+                result.emplace_back(id, data);
+            }
+        }
+    }
+
+    return result;
+}
+
 void RuntimeController::registerAction(const std::string& actionId, execution::ActionInvoker invoker)
 {
     actionInvokers_[actionId] = std::move(invoker);
@@ -216,6 +248,11 @@ void RuntimeController::processTransitions()
             {
                 ++stats_.transitionsFired;
                 log("Fired transition: " + trans->id());
+
+                if (onTransitionFired_)
+                {
+                    onTransitionFired_(trans->id(), stats_.epoch);
+                }
 
                 // Process tokens that entered places via PlaceTypes
                 processNewTokensAtPlaces(outputPlaces);

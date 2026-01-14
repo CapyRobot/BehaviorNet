@@ -37,3 +37,17 @@ cc_test(
         "//runtime:bnet_runtime",
     ],
 )
+
+# WebSocket server for GUI integration
+cc_binary(
+    name = "robot_picking_server",
+    srcs = ["server.cpp"],
+    data = ["config.json"],
+    deps = [
+        ":robot_actors",
+        "//runtime:bnet",
+        "//runtime:bnet_config",
+        "//runtime:bnet_runtime",
+        "//runtime:bnet_server",
+    ],
+)

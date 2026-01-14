@@ -5,6 +5,8 @@
 
 #include "../Token.hpp"
 
+#include <nlohmann/json.hpp>
+
 #include <chrono>
 #include <cstdint>
 #include <deque>
@@ -68,6 +70,9 @@ public:
 
     /// @brief Access a token by ID (for inspection).
     [[nodiscard]] const Token* get(TokenId id) const;
+
+    /// @brief Get all token IDs and their data (for inspection).
+    [[nodiscard]] std::vector<std::pair<TokenId, nlohmann::json>> getAllTokens() const;
 
 private:
     std::deque<Entry> queue_;

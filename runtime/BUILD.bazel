@@ -270,3 +270,17 @@ cc_test(
         ":bnet_testing",
     ],
 )
+
+# WebSocket server for GUI integration
+cc_library(
+    name = "bnet_server",
+    srcs = ["src/server/WebSocketServer.cpp"],
+    hdrs = ["include/bnet/server/WebSocketServer.hpp"],
+    includes = ["include"],
+    deps = [
+        ":bnet",
+        ":bnet_config",
+        ":bnet_runtime",
+        "@nlohmann_json//:json",
+    ],
+)

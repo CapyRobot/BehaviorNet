@@ -166,4 +166,16 @@ const Token* TokenQueue::get(TokenId id) const
     return nullptr;
 }
 
+std::vector<std::pair<TokenId, nlohmann::json>> TokenQueue::getAllTokens() const
+{
+    std::lock_guard<std::mutex> lock(mutex_);
+    std::vector<std::pair<TokenId, nlohmann::json>> result;
+    result.reserve(queue_.size());
+    for (const auto& entry : queue_)
+    {
+        result.emplace_back(entry.id, entry.token.data());
+    }
+    return result;
+}
+
 } // namespace bnet::core
