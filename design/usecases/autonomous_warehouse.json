@@ -1,0 +1,257 @@
+{
+  "actors": [
+    {
+      "id": "user::AMR",
+      "required_init_params": {
+        "id": { "type": "str" },
+        "Addr": { "type": "str" }
+      },
+      "optional_init_params": {
+        "metadata": { "type": "str" }
+      }
+    },
+    {
+      "id": "user::BinPickingStation",
+      "required_init_params": {
+        "id": { "type": "str" },
+        "Addr": { "type": "str" }
+      },
+      "optional_init_params": {}
+    },
+    {
+      "id": "user::PackingStation",
+      "required_init_params": {
+        "id": { "type": "str" },
+        "Addr": { "type": "str" }
+      },
+      "optional_init_params": {}
+    }
+  ],
+  "actions": [
+    {
+      "id": "user::is_charged",
+      "required_actors": ["user::AMR"]
+    },
+    {
+      "id": "user::charge",
+      "required_actors": ["user::AMR"]
+    },
+    {
+      "id": "user::transport_bins",
+      "required_actors": ["user::AMR"]
+    },
+    {
+      "id": "user::execute_order",
+      "required_actors": ["user::BinPickingStation"]
+    },
+    {
+      "id": "user::pack",
+      "required_actors": ["user::PackingStation"]
+    },
+    {
+      "id": "user::notify_done",
+      "required_actors": ["user::PackingStation"]
+    }
+  ],
+  "places": [
+    {
+      "id": "order_entry",
+      "type": "entrypoint",
+      "params": {
+        "new_actors": []
+      }
+    },
+    {
+      "id": "available_amrs",
+      "type": "resource_pool",
+      "params": {
+        "resource_id": "user::AMR",
+        "initial_availability": 5
+      }
+    },
+    {
+      "id": "wait_for_amr",
+      "type": "wait_with_timeout",
+      "params": {
+        "timeout_min": 10,
+        "on_timeout": "error::no_amr_available"
+      }
+    },
+    {
+      "id": "transport_to_picking",
+      "type": "action",
+      "params": {
+        "action_id": "user::transport_bins",
+        "retries": 2,
+        "timeout_per_try_min": 5,
+        "failure_as_error": true,
+        "error_to_global_handler": true
+      }
+    },
+    {
+      "id": "available_picking_stations",
+      "type": "resource_pool",
+      "params": {
+        "resource_id": "user::BinPickingStation",
+        "initial_availability": 3
+      }
+    },
+    {
+      "id": "bin_picking",
+      "type": "action",
+      "params": {
+        "action_id": "user::execute_order",
+        "retries": 1,
+        "timeout_per_try_min": 15,
+        "failure_as_error": true,
+        "error_to_global_handler": true
+      }
+    },
+    {
+      "id": "transport_to_packing",
+      "type": "action",
+      "params": {
+        "action_id": "user::transport_bins",
+        "retries": 2,
+        "timeout_per_try_min": 5,
+        "failure_as_error": true,
+        "error_to_global_handler": true
+      }
+    },
+    {
+      "id": "available_packing_stations",
+      "type": "resource_pool",
+      "params": {
+        "resource_id": "user::PackingStation",
+        "initial_availability": 2
+      }
+    },
+    {
+      "id": "packing",
+      "type": "action",
+      "params": {
+        "action_id": "user::pack",
+        "retries": 1,
+        "timeout_per_try_min": 10,
+        "failure_as_error": true,
+        "error_to_global_handler": true
+      }
+    },
+    {
+      "id": "notify_completion",
+      "type": "action",
+      "params": {
+        "action_id": "user::notify_done",
+        "retries": 3,
+        "timeout_per_try_s": 30,
+        "failure_as_error": false,
+        "error_to_global_handler": true
+      }
+    },
+    {
+      "id": "check_amr_charge",
+      "type": "action",
+      "params": {
+        "action_id": "user::is_charged",
+        "retries": 0,
+        "timeout_per_try_s": 5,
+        "failure_as_error": false,
+        "error_to_global_handler": true
+      }
+    },
+    {
+      "id": "charge_amr",
+      "type": "action",
+      "params": {
+        "action_id": "user::charge",
+        "retries": 1,
+        "timeout_per_try_min": 30,
+        "failure_as_error": true,
+        "error_to_global_handler": true
+      }
+    },
+    {
+      "id": "log_completion",
+      "type": "exit_logger",
+      "params": {}
+    }
+  ],
+  "transitions": [
+    {
+      "from": ["order_entry"],
+      "to": ["wait_for_amr"]
+    },
+    {
+      "from": ["wait_for_amr", "available_amrs"],
+      "to": ["transport_to_picking"]
+    },
+    {
+      "from": ["transport_to_picking::success", "available_picking_stations"],
+      "to": ["bin_picking"]
+    },
+    {
+      "from": ["bin_picking::success"],
+      "to": [
+        { "to": "transport_to_packing", "token_filter": "user::AMR" },
+        { "to": "available_picking_stations", "token_filter": "user::BinPickingStation" }
+      ]
+    },
+    {
+      "from": ["transport_to_packing::success", "available_packing_stations"],
+      "to": ["packing"]
+    },
+    {
+      "from": ["packing::success"],
+      "to": [
+        "notify_completion",
+        { "to": "check_amr_charge", "token_filter": "user::AMR" },
+        { "to": "available_packing_stations", "token_filter": "user::PackingStation" }
+      ]
+    },
+    {
+      "from": ["notify_completion::success"],
+      "to": ["log_completion"]
+    },
+    {
+      "from": ["check_amr_charge::success"],
+      "to": ["available_amrs"]
+    },
+    {
+      "from": ["check_amr_charge::failure"],
+      "to": ["charge_amr"]
+    },
+    {
+      "from": ["charge_amr::success"],
+      "to": ["available_amrs"]
+    }
+  ],
+  "_gui_metadata": {
+    "places": {
+      "order_entry": { "position": { "x": 100, "y": 300 } },
+      "wait_for_amr": { "position": { "x": 300, "y": 300 } },
+      "available_amrs": { "position": { "x": 300, "y": 150 } },
+      "transport_to_picking": { "position": { "x": 500, "y": 300 } },
+      "available_picking_stations": { "position": { "x": 700, "y": 150 } },
+      "bin_picking": { "position": { "x": 700, "y": 300 } },
+      "transport_to_packing": { "position": { "x": 900, "y": 300 } },
+      "available_packing_stations": { "position": { "x": 1100, "y": 150 } },
+      "packing": { "position": { "x": 1100, "y": 300 } },
+      "notify_completion": { "position": { "x": 1300, "y": 300 } },
+      "log_completion": { "position": { "x": 1500, "y": 300 } },
+      "check_amr_charge": { "position": { "x": 1100, "y": 500 } },
+      "charge_amr": { "position": { "x": 700, "y": 500 } }
+    },
+    "transitions": {
+      "transition_1": { "position": { "x": 200, "y": 300 } },
+      "transition_2": { "position": { "x": 400, "y": 250 } },
+      "transition_3": { "position": { "x": 600, "y": 250 } },
+      "transition_4": { "position": { "x": 800, "y": 300 } },
+      "transition_5": { "position": { "x": 1000, "y": 250 } },
+      "transition_6": { "position": { "x": 1200, "y": 300 } },
+      "transition_7": { "position": { "x": 1400, "y": 300 } },
+      "transition_8": { "position": { "x": 700, "y": 400 } },
+      "transition_9": { "position": { "x": 900, "y": 500 } },
+      "transition_10": { "position": { "x": 500, "y": 500 } }
+    }
+  }
+}

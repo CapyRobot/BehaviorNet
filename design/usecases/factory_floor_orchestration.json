@@ -1,0 +1,310 @@
+{
+  "actors": [
+    {
+      "id": "user::Product",
+      "required_init_params": {
+        "product_id": { "type": "str" },
+        "batch_id": { "type": "str" },
+        "product_type": { "type": "str" }
+      },
+      "optional_init_params": {
+        "priority": { "type": "int" }
+      }
+    },
+    {
+      "id": "user::Workstation",
+      "required_init_params": {
+        "id": { "type": "str" },
+        "station_type": { "type": "str" },
+        "Addr": { "type": "str" }
+      },
+      "optional_init_params": {}
+    },
+    {
+      "id": "user::Technician",
+      "required_init_params": {
+        "id": { "type": "str" },
+        "specialization": { "type": "str" }
+      },
+      "optional_init_params": {}
+    }
+  ],
+  "actions": [
+    {
+      "id": "user::process_product",
+      "required_actors": ["user::Workstation"]
+    },
+    {
+      "id": "user::inspect",
+      "required_actors": ["user::Workstation"]
+    },
+    {
+      "id": "user::perform_rework",
+      "required_actors": ["user::Technician"]
+    }
+  ],
+  "places": [
+    {
+      "id": "product_entry",
+      "type": "entrypoint",
+      "params": {
+        "new_actors": ["user::Product"]
+      }
+    },
+    {
+      "id": "smt_queue",
+      "type": "passive",
+      "params": {}
+    },
+    {
+      "id": "available_pick_place_machines",
+      "type": "resource_pool",
+      "params": {
+        "resource_id": "user::Workstation",
+        "initial_availability": 3
+      }
+    },
+    {
+      "id": "smt_assembly",
+      "type": "action",
+      "params": {
+        "action_id": "user::process_product",
+        "retries": 1,
+        "timeout_per_try_min": 10,
+        "failure_as_error": true,
+        "error_to_global_handler": true
+      }
+    },
+    {
+      "id": "reflow_queue",
+      "type": "passive",
+      "params": {}
+    },
+    {
+      "id": "available_reflow_ovens",
+      "type": "resource_pool",
+      "params": {
+        "resource_id": "user::Workstation",
+        "initial_availability": 2
+      }
+    },
+    {
+      "id": "reflow_process",
+      "type": "action",
+      "params": {
+        "action_id": "user::process_product",
+        "retries": 0,
+        "timeout_per_try_min": 15,
+        "failure_as_error": true,
+        "error_to_global_handler": true
+      }
+    },
+    {
+      "id": "aoi_queue",
+      "type": "passive",
+      "params": {}
+    },
+    {
+      "id": "available_aoi_stations",
+      "type": "resource_pool",
+      "params": {
+        "resource_id": "user::Workstation",
+        "initial_availability": 1
+      }
+    },
+    {
+      "id": "aoi_inspection",
+      "type": "action",
+      "params": {
+        "action_id": "user::inspect",
+        "retries": 0,
+        "timeout_per_try_min": 5,
+        "failure_as_error": false,
+        "error_to_global_handler": true
+      }
+    },
+    {
+      "id": "rework_queue",
+      "type": "passive",
+      "params": {}
+    },
+    {
+      "id": "available_technicians",
+      "type": "resource_pool",
+      "params": {
+        "resource_id": "user::Technician",
+        "initial_availability": 3
+      }
+    },
+    {
+      "id": "available_rework_stations",
+      "type": "resource_pool",
+      "params": {
+        "resource_id": "user::Workstation",
+        "initial_availability": 2
+      }
+    },
+    {
+      "id": "rework_process",
+      "type": "action",
+      "params": {
+        "action_id": "user::perform_rework",
+        "retries": 2,
+        "timeout_per_try_min": 20,
+        "failure_as_error": true,
+        "error_to_global_handler": true
+      }
+    },
+    {
+      "id": "final_assembly_queue",
+      "type": "passive",
+      "params": {}
+    },
+    {
+      "id": "available_final_assembly_stations",
+      "type": "resource_pool",
+      "params": {
+        "resource_id": "user::Workstation",
+        "initial_availability": 2
+      }
+    },
+    {
+      "id": "final_assembly",
+      "type": "action",
+      "params": {
+        "action_id": "user::process_product",
+        "retries": 1,
+        "timeout_per_try_min": 10,
+        "failure_as_error": true,
+        "error_to_global_handler": true
+      }
+    },
+    {
+      "id": "packaging",
+      "type": "action",
+      "params": {
+        "action_id": "user::process_product",
+        "retries": 1,
+        "timeout_per_try_min": 5,
+        "failure_as_error": true,
+        "error_to_global_handler": true
+      }
+    },
+    {
+      "id": "log_completion",
+      "type": "exit_logger",
+      "params": {}
+    }
+  ],
+  "transitions": [
+    {
+      "from": ["product_entry"],
+      "to": ["smt_queue"]
+    },
+    {
+      "from": ["smt_queue", "available_pick_place_machines"],
+      "to": ["smt_assembly"]
+    },
+    {
+      "from": ["smt_assembly::success"],
+      "to": [
+        { "to": "reflow_queue", "token_filter": "user::Product" },
+        { "to": "available_pick_place_machines", "token_filter": "user::Workstation" }
+      ]
+    },
+    {
+      "from": ["reflow_queue", "available_reflow_ovens"],
+      "to": ["reflow_process"]
+    },
+    {
+      "from": ["reflow_process::success"],
+      "to": [
+        { "to": "aoi_queue", "token_filter": "user::Product" },
+        { "to": "available_reflow_ovens", "token_filter": "user::Workstation" }
+      ]
+    },
+    {
+      "from": ["aoi_queue", "available_aoi_stations"],
+      "to": ["aoi_inspection"]
+    },
+    {
+      "from": ["aoi_inspection::success"],
+      "to": [
+        { "to": "final_assembly_queue", "token_filter": "user::Product" },
+        { "to": "available_aoi_stations", "token_filter": "user::Workstation" }
+      ]
+    },
+    {
+      "from": ["aoi_inspection::failure"],
+      "to": [
+        { "to": "rework_queue", "token_filter": "user::Product" },
+        { "to": "available_aoi_stations", "token_filter": "user::Workstation" }
+      ]
+    },
+    {
+      "from": ["rework_queue", "available_technicians", "available_rework_stations"],
+      "to": ["rework_process"]
+    },
+    {
+      "from": ["rework_process::success"],
+      "to": [
+        { "to": "aoi_queue", "token_filter": "user::Product" },
+        { "to": "available_technicians", "token_filter": "user::Technician" },
+        { "to": "available_rework_stations", "token_filter": "user::Workstation" }
+      ]
+    },
+    {
+      "from": ["final_assembly_queue", "available_final_assembly_stations"],
+      "to": ["final_assembly"]
+    },
+    {
+      "from": ["final_assembly::success"],
+      "to": [
+        "packaging",
+        { "to": "available_final_assembly_stations", "token_filter": "user::Workstation" }
+      ]
+    },
+    {
+      "from": ["packaging::success"],
+      "to": ["log_completion"]
+    }
+  ],
+  "_gui_metadata": {
+    "places": {
+      "product_entry": { "position": { "x": 100, "y": 300 } },
+      "smt_queue": { "position": { "x": 250, "y": 300 } },
+      "available_pick_place_machines": { "position": { "x": 400, "y": 150 } },
+      "smt_assembly": { "position": { "x": 400, "y": 300 } },
+      "reflow_queue": { "position": { "x": 550, "y": 300 } },
+      "available_reflow_ovens": { "position": { "x": 700, "y": 150 } },
+      "reflow_process": { "position": { "x": 700, "y": 300 } },
+      "aoi_queue": { "position": { "x": 850, "y": 300 } },
+      "available_aoi_stations": { "position": { "x": 1000, "y": 150 } },
+      "aoi_inspection": { "position": { "x": 1000, "y": 300 } },
+      "rework_queue": { "position": { "x": 1000, "y": 500 } },
+      "available_technicians": { "position": { "x": 850, "y": 600 } },
+      "available_rework_stations": { "position": { "x": 1150, "y": 600 } },
+      "rework_process": { "position": { "x": 1000, "y": 700 } },
+      "final_assembly_queue": { "position": { "x": 1200, "y": 300 } },
+      "available_final_assembly_stations": { "position": { "x": 1350, "y": 150 } },
+      "final_assembly": { "position": { "x": 1350, "y": 300 } },
+      "packaging": { "position": { "x": 1500, "y": 300 } },
+      "log_completion": { "position": { "x": 1650, "y": 300 } }
+    },
+    "transitions": {
+      "transition_1": { "position": { "x": 175, "y": 300 } },
+      "transition_2": { "position": { "x": 325, "y": 225 } },
+      "transition_3": { "position": { "x": 475, "y": 300 } },
+      "transition_4": { "position": { "x": 625, "y": 225 } },
+      "transition_5": { "position": { "x": 775, "y": 300 } },
+      "transition_6": { "position": { "x": 925, "y": 225 } },
+      "transition_7": { "position": { "x": 1100, "y": 250 } },
+      "transition_8": { "position": { "x": 1100, "y": 400 } },
+      "transition_9": { "position": { "x": 1000, "y": 600 } },
+      "transition_10": { "position": { "x": 850, "y": 500 } },
+      "transition_11": { "position": { "x": 1275, "y": 225 } },
+      "transition_12": { "position": { "x": 1425, "y": 300 } },
+      "transition_13": { "position": { "x": 1575, "y": 300 } }
+    }
+  }
+}

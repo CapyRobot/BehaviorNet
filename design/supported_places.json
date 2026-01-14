@@ -9,6 +9,11 @@
       "required": true,
       "description": "Unique identifier for the place"
     },
+    "description": {
+      "type": "string",
+      "required": false,
+      "description": "Description of the place for documentation. Not used for anything else."
+    },
     "label": {
       "type": "string",
       "required": false,
@@ -24,7 +29,15 @@
       "type": "array",
       "items": { "type": "string" },
       "required": false,
-      "description": "Actor types that tokens must contain to enter this place"
+      "description": "Actor types that tokens must contain to enter this place",
+      "requiresActorsFeatureEnabled": true
+    },
+    "onlyAllowRequiredActors": {
+      "type": "boolean",
+      "default": false,
+      "required": false,
+      "description": "Only allow tokens with required actors to enter this place",
+      "requiresActorsFeatureEnabled": true
     }
   },
 
@@ -35,13 +48,6 @@
       "color": "green",
       "icon": ">",
       "params": {
-        "entryMechanism": {
-          "type": "enum",
-          "options": ["http", "manual", "ros"],
-          "default": "http",
-          "required": true,
-          "description": "How tokens are injected"
-        },
         "newActors": {
           "type": "array",
           "items": { "type": "actorRef" },
@@ -54,7 +60,7 @@
 
     "resource_pool": {
       "label": "Resource Pool",
-      "description": "Pool of available resources (e.g., chargers, stations)",
+      "description": "Pool of available resources (e.g., chargers, stations) with initial resource availability and utilities to add/remove resources, etc.",
       "color": "blue",
       "icon": "#",
       "params": {
@@ -62,6 +68,13 @@
           "type": "actorRef",
           "required": true,
           "description": "Actor type for resources in this pool"
+        },
+        "initialAvailability": {
+          "type": "integer",
+          "min": 0,
+          "default": 0,
+          "required": false,
+          "description": "Initial availability of resources in this pool"
         }
       }
     },
