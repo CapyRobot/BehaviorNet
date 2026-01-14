@@ -3,6 +3,8 @@ node_modules/
 
 # Build output
 gui/dist/
+bazel-*
+MODULE.bazel.lock
 
 # IDE
 .idea/

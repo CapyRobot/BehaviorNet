@@ -82,3 +82,62 @@ Action places have implicit subplaces: `::in_execution`, `::success`, `::failure
 - Actions execute asynchronously with configurable retries and timeouts
 - Static validation on initialization; liveness issues are warnings, actor type mismatches are errors
 - Global error handler implemented as a subnet with error type filtering
+
+## Development Guidelines
+
+**Always verify your work:**
+- Write tests for new functionality
+- Run tests before considering work complete: `bazel test //runtime:all`
+- Ensure CI passes (both runtime and GUI)
+
+**Code quality:**
+- Follow clang-tidy rules (run `bazel build //runtime:all --aspects=@bazel_clang_tidy//clang_tidy:clang_tidy.bzl%clang_tidy_aspect --output_groups=report`)
+- Clean up after edits: remove unused headers, dead code, unused variables
+- Use modern C++17 idioms
+
+**C++ style:**
+- Use `#pragma once` for header guards
+- Prefer `std::string_view` for non-owning string parameters
+- Use `[[nodiscard]]` for functions where ignoring return value is likely a bug
+- Mark single-argument constructors `explicit`
+- Use trailing return types for complex template functions
+- Opening braces on next line for functions, if/else, class/struct:
+  ```cpp
+  class Foo
+  {
+  public:
+      void bar()
+      {
+          if (condition)
+          {
+              // ...
+          }
+      }
+  };
+  ```
+
+**Comments:**
+- Keep comments minimal; don't repeat what the code says
+- Use `/// @brief` for doc comments, with extra context above if needed
+- Put `@param` and `@return` at the bottom of the doc block
+- Use `///<` for trailing comments on the same line or after a declaration
+- Example:
+  ```cpp
+  /// @brief Get an actor from the token.
+  /// @tparam T The actor type to retrieve.
+  /// @return Reference to the actor.
+  /// @throws ActorNotFoundError if not present.
+  template <typename T>
+  [[nodiscard]] const T& getActor() const;
+
+  struct ActionInfo {
+      std::string id;           ///< e.g., "user::move_to_location"
+      std::string actorTypeId;  ///< e.g., "user::Vehicle"
+      bool requiresToken;       ///< true if action needs Token input
+  };
+  ```
+
+**Testing:**
+- Tests live in `runtime/test/`
+- Use descriptive test function names: `testFeatureName()`
+- Test both success and error paths

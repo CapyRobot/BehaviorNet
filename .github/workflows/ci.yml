@@ -1,0 +1,102 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  runtime-build:
+    name: C++ Runtime Build & Test
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Bazel
+        uses: bazel-contrib/setup-bazel@0.14.0
+        with:
+          bazelisk-cache: true
+          disk-cache: ${{ github.workflow }}
+          repository-cache: true
+
+      - name: Build runtime
+        run: bazel build //runtime:all
+
+      - name: Run tests
+        run: bazel test //runtime:all --test_output=errors
+
+  runtime-lint:
+    name: C++ Lint (clang-tidy)
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install clang-tidy
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang-tidy
+
+      - name: Setup Bazel
+        uses: bazel-contrib/setup-bazel@0.14.0
+        with:
+          bazelisk-cache: true
+          disk-cache: ${{ github.workflow }}-lint
+          repository-cache: true
+
+      - name: Generate compile_commands.json
+        run: |
+          bazel build //runtime:all \
+            --aspects=@bazel_tools//tools/cpp:cc_configure.bzl%generate_compile_commands_json \
+            --output_groups=compile_commands 2>/dev/null || true
+          # Fallback: create minimal compile_commands for headers
+          echo '[' > compile_commands.json
+          for f in runtime/src/*.cpp; do
+            echo "{\"directory\": \"$PWD\", \"file\": \"$f\", \"command\": \"clang++ -std=c++17 -I runtime/include $f\"}," >> compile_commands.json
+          done
+          sed -i '$ s/,$//' compile_commands.json
+          echo ']' >> compile_commands.json
+
+      - name: Run clang-tidy
+        run: |
+          find runtime/src runtime/include -name '*.cpp' -o -name '*.hpp' | \
+            xargs clang-tidy -p . --warnings-as-errors='' 2>&1 | tee clang-tidy-output.txt
+          # Fail if there are any warnings (excluding notes)
+          if grep -E "warning:" clang-tidy-output.txt; then
+            echo "clang-tidy found warnings"
+            exit 1
+          fi
+
+  gui-build:
+    name: GUI Build & Test
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: gui
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: gui/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Type check
+        run: npx tsc --noEmit
+
+      - name: Run tests
+        run: npm test
+
+      - name: Build
+        run: npm run build

@@ -1,0 +1,42 @@
+load("@rules_cc//cc:defs.bzl", "cc_library", "cc_test")
+
+package(default_visibility = ["//visibility:public"])
+
+# Main BehaviorNet library
+cc_library(
+    name = "bnet",
+    srcs = [
+        "src/ActionResult.cpp",
+        "src/Error.cpp",
+    ],
+    hdrs = [
+        "include/bnet/ActionResult.hpp",
+        "include/bnet/Actor.hpp",
+        "include/bnet/bnet.hpp",
+        "include/bnet/Error.hpp",
+        "include/bnet/Registry.hpp",
+        "include/bnet/Token.hpp",
+    ],
+    includes = ["include"],
+    deps = [],
+)
+
+# Example actors for testing
+cc_library(
+    name = "warehouse_actors",
+    hdrs = ["examples/warehouse_actors.hpp"],
+    includes = ["."],
+    strip_include_prefix = "",
+    include_prefix = "runtime",
+    deps = [":bnet"],
+)
+
+# Test that the API compiles and works
+cc_test(
+    name = "api_test",
+    srcs = ["test/api_test.cpp"],
+    deps = [
+        ":bnet",
+        ":warehouse_actors",
+    ],
+)
